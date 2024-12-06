@@ -1,0 +1,629 @@
+---
+title: "Códigos do Livro R para Ciência de Dados"
+author: Rayane, Thayan , Evaldo
+date: "`r format(Sys.time(), '%m, %d, %Y')`"
+format:
+  html:
+    toc: true
+    toc-location: left
+    code-fold: true
+    theme: cosmo
+number-sections: true
+lang: pt-BR
+editor_options: 
+  chunk_output_type: console
+---
+
+## Capítulo 1 - Visualização de Daods
+
+```{r}
+#| warning: false
+#| message: false
+library(tidyverse)
+```
+
+```{r}
+library(dados)
+library(ggthemes)
+```
+
+Dados
+
+```{r}
+pinguins
+```
+
+```{r}
+glimpse(pinguins)
+```
+
+### criando um fragico
+
+```{r}
+ggplot(data = pinguins)
+```
+
+## Capítulo 2
+
+## Capítulo 3 - Transformação de dados
+
+Existem 4 verbos importantes que afetam as colunas sem modificar as linhas:
+
+-   `mutate()`
+-   `select()`
+-   `rename()`
+-   `relocate()`
+
+### **`Função mutate()`**
+
+O papel de [`mutate()`](https://dplyr.tidyverse.org/reference/mutate.html) é adicionar novas colunas que são calculadas a partir de colunas existentes. Vamos calcular o `tempo_ganho`, ou seja, quanto tempo um vôo atrasado recuperou no ar, e a velocidade `velocidade` em milhas por hora:
+
+```{r}
+voos |> 
+  mutate(tempo_ganho = atraso_saida - atraso_chegada,
+         velocidade = distancia / tempo_voo * 60
+         )
+```
+
+Precisamos pedir que o mutate adicone a coluna nova à esquerda e não à direita das colunas do dataframe:
+
+```{r}
+voos |> 
+  mutate(tempo_ganho = atraso_saida - atraso_chegada,
+         velocidade = distancia / tempo_voo * 60,
+         .before = 1
+         )
+```
+
+O `.` é um sinal que mostra que `.before` é um argumento da função e não o nome de uma terceira variável que estamos criando. Podemos usar também o .`after` e mencionar o nome de uma variável em lugar da posição dela.
+
+```{r}
+voos |> 
+  mutate(tempo_ganho = atraso_saida - atraso_chegada,
+         velocidade = distancia / tempo_voo * 60,
+         .after = dia
+  )
+```
+
+Por sua vez, o argumento .keep é útil para manter as variáveis que queremos. Por exemplo, "used" mantém só as variáveis empregadas no cálculo.
+
+```{r}
+voos |> 
+  mutate(tempo_ganho = atraso_saida - atraso_chegada,
+         horas = tempo_voo / 60,
+         tempo_ganho_por_hora = tempo_ganho / horas,
+         .keep = "used"
+         )
+```
+
+### **Função `select()`**
+
+[`select()`](https://dplyr.tidyverse.org/reference/select.html) permite que você rapidamente dê um *zoom* (foque) em um subconjunto adequado utilizando operações baseadas no nome das variáveis:
+
+-   Seleciona colunas por nome:
+
+    ```{r}
+    voos |> 
+      select(ano, mes, dia)
+    ```
+
+-   Seleciona todas as colunas entre ano e dia (inclusos):
+
+    ```{r}
+    voos |> 
+      select(ano:dia)
+    ```
+
+<!-- -->
+
+-   Seleciona todas as colunas exceto aquelas entre ano e dia (inclusos):
+
+    ```{r}
+    voos |> 
+      select(!ano:dia)
+    ```
+
+<!-- -->
+
+-   Seleciona todas as colunas que são caracteres:
+
+    ```{r}
+    voos |> 
+      select(where(is.character))
+    ```
+
+Existe uma variedade de funções auxiliares que você pode utilizar junto com [`select()`](https://dplyr.tidyverse.org/reference/select.html):
+
+-   `starts_with("abc")`: dá match em nomes que se iniciam com “abc”.
+-   `ends_with("xyz")`: dá match em nomes que terminam “xyz”.
+-   `contains("ijk")`: dá match em nomes que contém “ijk”.
+-   `num_range("x", 1:3)`: buscará `x1`, `x2` e `x3`.
+
+Você pode renomear variáveis à media que seleciona elas com [`select()`](https://dplyr.tidyverse.org/reference/select.html) utilizando `=`. O novo nome aparece à esquerda do `=` e o nome antigo à direita:
+
+```{r}
+voos |> 
+  select(tail_num = codigo_cauda)
+```
+
+### **Função `rename()`**
+
+Se você quiser manter todas as variáveis disponíveis e quer renomear apenas algumas delas, você pode utilizar [`rename()`](https://dplyr.tidyverse.org/reference/rename.html) em vez de [`select()`](https://dplyr.tidyverse.org/reference/select.html):
+
+```{r}
+voos |> 
+  rename(tail_num = codigo_cauda)
+```
+
+Se você tem várias colunas com nomes inconsistentes e gostaria de manualmente consertá-las de uma vez, confira o pacote [`janitor::clean_names()`](https://sfirke.github.io/janitor/reference/clean_names.html) que fornece alguns métodos úteis de limpeza.
+
+### **Função `relocate()`**
+
+Utilize [`relocate()`](https://dplyr.tidyverse.org/reference/relocate.html) para mover as variáveis de lugar. Talvez você queira deixar variáveis relacionadas juntas ou mover variáveis importantes para o início do data frame
+
+```{r}
+voos |> 
+  relocate(data_hora, tempo_voo)
+```
+
+Você também pode especificar onde quer colocá-las utilizando `.before` e `.after`, assim como em [`mutate()`](https://dplyr.tidyverse.org/reference/mutate.html):
+
+```{r}
+voos |> 
+  relocate(ano:horario_saida, .after = horario_chegada)
+```
+
+```{r}
+voos |> 
+  relocate(starts_with("cheg"), .before = horario_saida)
+```
+
+### **Exercícios**
+
+1.  Compare `horario_saida`, `saida_programada`, e `atraso_saida`. Como você esperaria que esses três números estivessem relacionados?
+
+    ```{r}
+    voos |> 
+      select(horario_saida, saida_programada) |> 
+      mutate(atraso_na_saida = horario_saida - saida_programada)
+    ```
+
+O atraso na saída se relaciona diretamente entre a saída programada e o horario realmente de saída. Então, basta fazer a diferença para se obter o atrada na saída dos vôo.
+
+2.  Esboce a maior quantidade possível de maneiras de selecionar `horario_saida`, `atraso_saida`, `horario_chegada`, e `atraso_chegada` a partir de `voos`.
+
+    ```{r}
+    voos |> 
+      select(horario_saida, atraso_saida, horario_chegada, atraso_chegada)
+    ```
+
+    ```{r}
+    voos |> 
+      select(ends_with("saida"), ends_with("chegada"))
+    ```
+
+    ```{r}
+    voos |> 
+      select(starts_with("horario"), starts_with("atraso"))
+    ```
+
+    ```{r}
+    voos |> 
+      select(contains("horario"), contains("atraso"))
+    ```
+
+3.  O que acontece se você especificar o nome de uma mesma variável múltiplas vezes em uma chamada à [`select()`](https://dplyr.tidyverse.org/reference/select.html)?
+
+    ```{r}
+    voos |> 
+      select(dia, dia, dia, contains("atraso"))
+    ```
+
+    Essa variável só sera chamada uma única vez
+
+4.  O que a função [`any_of()`](https://tidyselect.r-lib.org/reference/all_of.html) faz? Por que ela pode ser útil se utilizada em conjunto com esse vetor?
+
+    ```{r}
+    variables <- c("ano", "mes", "dia", "atraso_saida", "atraso_chegada")
+
+    voos |> 
+      select(any_of(variables))
+    ```
+
+    Seleciona quaisquer uma das variáveis ddpresente neste vetor `variables`.
+
+5.  O resultado de rodar o código a seguir te surpreende de alguma forma? Como que que as funções auxiliares de seleção lidam, por padrão, com maiúsculas e minúsculas? Como você pode alterar esse padrão?
+
+    ```{r}
+    voos |> 
+      select(contains("TEMPO"))
+    ```
+
+    Sim ,surpreende, mas ela seleciona independete de maisuscula ou minusculas. Poderia selecionar a função `contains()` e pressionar F1. Para mudar esse padrão, usuaria:
+
+    ```{r}
+    voos |> 
+      select(contains("TEMPO", ignore.case = FALSE))
+    ```
+
+    Não seleionará nenhum coluna pois não encontrou nenhuma com letras apenas amiúsculas: TEMPO
+
+6.  Renomeie `tempo_voo` para `tempo_voo_min` para indicar as unidades de medida e mova-a para o início do data frame.
+
+    ```{r}
+    voos |> 
+      relocate(tempo_voo_min = tempo_voo, .before = 1)
+    ```
+
+7.  Por que o código abaixo não funciona e o que o erro significa?
+
+    ```{r}
+    voos |> 
+      select(codigo_cauda) |> 
+      arrange(atraso_chegada)
+    ```
+
+    Não funciona porque houve seleção de paenas uma variável e quando se aplicou `arrange`, utilizou-se uma variável que foi excluida da seleção, neste caso `atraso_chegada`, provando a mensagem de objeto não encontrado.
+
+### **O operador pipe (\|\>)**
+
+O real poder do pipe `|>` emerge quando você começa a combinar múltiplos verbos. Por exemplo, imagine que você gostaria de achar os vôos mais rápidos do aeroporto IAH em Houston: você precisaria combinar [`filter()`](https://dplyr.tidyverse.org/reference/filter.html), [`mutate()`](https://dplyr.tidyverse.org/reference/mutate.html), [`select()`](https://dplyr.tidyverse.org/reference/select.html) e [`arrange()`](https://dplyr.tidyverse.org/reference/arrange.html):
+
+```{r}
+voos |> 
+  filter(destino == "IAH") |> 
+  mutate(velocidade = distancia/tempo_voo*60) |> 
+  select(ano:dia, horario_saida, companhia_aerea, voo, velocidade) |> 
+  arrange(desc(velocidade))
+```
+
+Se não tivéssemos o pipeline, precisariamos aninhar cada chada dentro da chamada anterior:
+
+```{r}
+arrange(
+  select(
+    mutate(
+      filter(voos, destino == "IAH"),
+      velocidade = distancia / tempo_voo * 60),
+    ano:dia, horario_saida, companhia_aerea, voo, velocidade),
+  desc(velocidade)
+)
+```
+
+Ou poderíamos utilizar alguns objetos intermediários:
+
+```{r}
+voos1 <- filter(voos, destino == "IAH")
+voos2 <- mutate(voos1, velocidade = distancia / tempo_voo * 60)
+voos3 <- select(voos2, ano:dia, horario_saida, companhia_aerea, voo, velocidade)
+arrange(voos3, desc(velocidade))
+```
+
+Entre uso do pipe do pacote magrittr `%>%` e do R base `|>` , é recomendado o do R Base, pois é mais fáciç de escrever e não precisa chamar um pacote :
+
+```{r}
+library(tidyverse)
+library(dados)
+
+mtcarros %>% 
+  group_by(cilindros) %>%
+  summarize(n = n())
+```
+
+### **Grupos (groups)**
+
+Nessa seção, focaremos nas funções mais importantes: [`group_by()`](https://dplyr.tidyverse.org/reference/group_by.html), [`summarize()`](https://dplyr.tidyverse.org/reference/summarise.html), e a família de funções *slice*.
+
+#### **`group_by()`**
+
+Utilize [`group_by()`](https://dplyr.tidyverse.org/reference/group_by.html) para dividir o seu conjunto de dados em grupos que tenham algum significado para sua análise:
+
+```{r}
+voos |> 
+  group_by(mes)
+```
+
+[`group_by()`](https://dplyr.tidyverse.org/reference/group_by.html) não modifica seus dados, mas o conjunto já fica agrupado por mes para futuras operações.
+
+#### **`summarize()`**
+
+A operação agrupada mais importante é a sumarização (*“summary”*), que caso esteja sendo utilizada para calcular uma única sumarização estatística, reduz o data frame para ter apenas uma única linha para cada grupo.
+
+No dplyr, essa operação é feita pela função `summarize()`, como mostrado pelo exemplo a seguir, que calcula o atraso médio das decolagens por mês:
+
+```{r}
+voos |> 
+  group_by(mes) |> 
+  summarize(atraso_medio = mean(atraso_saida))
+```
+
+Vamos etirar os valores ausentes (NAs) do cálculo da média:
+
+```{r}
+voos |> 
+  group_by(mes) |> 
+  summarize(atraso_medio = mean(atraso_saida, na.rm = TRUE))
+```
+
+Você pode criar quantas sínteses quiser em uma única chamada à [`summarize()`](https://dplyr.tidyverse.org/reference/summarise.html)`:`
+
+```{r}
+voos |> 
+  group_by(mes) |> 
+  summarize(atraso = mean(atraso_saida, na.rm = TRUE), 
+            n = n()  # Retorna o numero de linhas de cada grupo
+            )
+```
+
+#### **As funções `slice_`**
+
+Existem cinco funções úteis que lhe permite extrair linhas específicas de dentro de cada grupo:
+
+-   `df |> slice_head(n = 1)` pega a primeira linha de cada grupo.
+-   `df |> slice_tail(n = 1)` pega a última linha de cada grupo.
+-   `df |> slice_min(x, n = 1)` pega a linha com o menor valor da coluna `x`.
+-   `df |> slice_max(x, n = 1)` pega a linha com o maior valor da coluna `x`.
+-   `df |> slice_sample(n = 1)` pega uma linha aleatória.
+
+Por exemplo, o código a seguir acha os vôos que estão mais atrasados na chegada em cada destino.
+
+```{r}
+voos |> 
+  group_by(destino) |> 
+  slice_max(atraso_chegada, n = 1) |> 
+  relocate(destino)
+```
+
+#### **Agrupando por múltiplas variáveis**
+
+Você pode criar grupos utilizando mais de uma variável. Por exemplo, podemos fazer um grupo para cada data.
+
+```{r}
+por_dia <- voos |>  
+  group_by(ano, mes, dia)
+
+por_dia
+```
+
+Quando você cria um sumário de um tibble agrupado por mais de uma variável, cada sumário remove a camada do último grupo. 
+
+```{r}
+voos_diarios <- por_dia |> 
+  summarize(n = n()) 
+```
+
+Se você acha que esse comportamente está adequado, você pode requisitá-lo explicitamente para que a mensagem seja suprimida:
+
+```{r}
+voos_diarios <- por_dia |> 
+  summarize(n = n(), 
+            .groups = "drop_last"
+            ) |> 
+  ungroup()
+```
+
+#### **Desagrupando**
+
+Você também pode querer remover agrupamentos de um data frame sem utilizar [`summarize()`](https://dplyr.tidyverse.org/reference/summarise.html). Você pode fazer isso com [`ungroup()`](https://dplyr.tidyverse.org/reference/group_by.html).
+
+```{r}
+por_dia |> 
+  ungroup()
+```
+
+Agora, vamos ver o que acontece quando você tenta sumarizar um data frame desagrupado.
+
+```{r}
+por_dia |> 
+  ungroup() |>
+  summarize(atraso_medio = mean(atraso_saida, na.rm = TRUE), 
+            voos = n()
+            )
+```
+
+Você obtém uma única linha, pois o dplyr trata todas as linhas de um data frame desagrupado como pertencentes a um único grupo.
+
+#### **`.by`**
+
+dplyr 1.1.0 inclui uma nova e experimental sintaxe para agrupamentos por operação, trata-se do argumento `.by`
+
+```{r}
+voos |> 
+  summarize(atraso = mean(atraso_saida, na.rm = TRUE), 
+            n = n(),
+            .by = mes
+            )
+```
+
+Ou, se você quiser agrupar por múltiplas variáveis:
+
+```{r}
+voos |> 
+  summarize(atraso = mean(atraso_saida, na.rm = TRUE), 
+            n = n(),
+            .by = c(origem, destino)
+            )
+```
+
+`.by` funciona com todos os verbos e tem a vantagem de você não precisar utilizar o argumento `.groups` para suprimir a mensagem de agrupamento ou [`ungroup()`](https://dplyr.tidyverse.org/reference/group_by.html) quando já tiver terminado a operação.
+
+#### **Exercícios**
+
+1.  Qual companhia aérea (*companhia_aerea*) possui a pior média de atrasos? Desafio: você consegue desvendar os efeitos de aeroportos ruins versus companhias aéreas ruins? Por que sim ou por que não?
+
+    ```{r}
+    voos |>  
+      group_by(companhia_aerea) |> 
+      summarize(n(),
+                atraso_medio_chegada = mean(atraso_chegada, na.rm = T)) |> 
+      arrange(desc(atraso_medio_chegada))
+    ```
+
+    ```{r}
+    voos |>  
+      group_by(companhia_aerea, destino) |> 
+      summarize(n(),
+                atraso_medio_chegada = mean(atraso_chegada, na.rm = T)) |> 
+      arrange(desc(atraso_medio_chegada))
+
+    ```
+
+2.  Ache os vôos que estão mais atrasados no momento da decolagem, a partir de cada destino.
+
+    ```{r}
+    voos |> 
+      group_by(destino) |> 
+      summarise(atraso = mean(atraso_saida, na.rm = T)) |> 
+      arrange(desc(atraso))
+    ```
+
+3.  Como os atrasos variam ao longo do dia. Ilustre sua resposta com um gráfico.
+
+    ```{r}
+    library(lubridate)
+
+    voos |>
+      group_by(dia, hora) |>
+      summarise(media_atraso = mean(atraso_chegada, na.rm = TRUE), .groups = "drop") |>
+      ggplot(aes(x = hora, y = media_atraso, group = dia, color = as.factor(dia))) +
+      geom_line(linewidth = 0.6) +
+      labs(title = "Variação do atraso de chegada ao longo do dia)",
+           x = "Hora do dia",
+           y = "Atraso médio (minutos)",
+           color = "Dia do mês") +
+      theme_minimal() +
+      scale_x_continuous(breaks = seq(0, 24, by = 2), limits = c(4, 24))
+    ```
+
+4.  O que acontece se você passar um `n` negativo para [`slice_min()`](https://dplyr.tidyverse.org/reference/slice.html) e funções similares?
+
+    ```{r}
+    voos |> 
+      group_by(destino) |> 
+      slice_min(atraso_chegada, n = -3) |>
+      relocate(destino, atraso_chegada) 
+    ```
+
+    Resp.: selecionará todas as linhas do dataframe `df` **exceto as 3 linhas com os menores valores da coluna especificada**. A mesma lógica se aplica a `slice_max()` com valores negativos de `n`. Ou sejaa, dá o resultado inverso.
+
+5.  Explique o que [`count()`](https://dplyr.tidyverse.org/reference/count.html) faz em termos dos verbos dplyr que você acabou de aprender. O que o argumento `sort` faz para a função [`count()`](https://dplyr.tidyverse.org/reference/count.html)?
+
+    -   A função `count()` no pacote `dplyr` é uma função de conveniência que combina duas operações comuns: `group_by()` e `summarize()`. Ela agrupa os dados por uma ou mais variáveis e, em seguida, conta o número de observações em cada grupo.
+
+        -   O `count()` primeiro agrupa os dados com base na variável especificada (como o **`group_by()`**).
+
+        <!-- -->
+
+        -   Em seguida, calcula o número de ocorrências para cada grupo (como o **`summarise(n = n())`**, onde `n` representa a contagem de linhas no grupo).
+
+    -   O argumento `sort = TRUE` na função `count()` ordena os resultados pela frequência (ou contagem), de forma decrescente.
+
+    ```{r}
+    # Exemplo simples de aplicação:
+    df <- tibble(
+      category = sample(c("A", "B", "C"), size = 15, replace = TRUE),
+      value1 = sample(1:100, size = 15, replace = TRUE),
+      value2 = runif(15, min = 0, max = 50)
+      )
+
+    df |> 
+      count(category)
+    ```
+
+6.  Suponha que temos o pequeno data frame a seguir:
+
+    ```{r}
+    df <- tibble(
+      x = 1:5,
+      y = c("a", "b", "a", "a", "b"),
+      z = c("K", "K", "L", "L", "K")
+    )
+    ```
+
+**a)** Escreva como você acha que será a saída, e em seguida confira se acertou e descreva o que [`group_by()`](https://dplyr.tidyverse.org/reference/group_by.html) faz:
+
+```{r}
+df |> 
+  group_by(y)
+```
+
+`group_by()` gera grupos de acordo as categorias de uma vaiável (y), sem fazer cálculos.
+
+b\) Escreva como você acha que será a saída, e em seguida confira se acertou e descreva o que [`arrange()`](https://dplyr.tidyverse.org/reference/arrange.html) faz. Comente também a respeito da diferença em relação ao [`group_by()`](https://dplyr.tidyverse.org/reference/group_by.html) da parte (a):
+
+```{r}
+df |>
+  arrange(y)
+```
+
+`arrange()` ordena segundo a variável y, porém não cria grupos para posterior análise como o `group_by()`.
+
+**c)** Escreva como você acha que será a saída, e em seguida confira se acertou e descreva o que o seguinte pipeline faz:
+
+```{r}
+df |>
+  group_by(y) |>
+  summarize(mean_x = mean(x))
+```
+
+Ele agrupa pelas categorias da variável y e depois calcula as médias desses dois grupos para a variável x.
+
+**d)** Escreva como você acha que será a saída, e em seguida confira se acertou e descreva o que o seguinte pipeline faz. Em seguida, comente sobre o que a mensagem diz:
+
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x))
+```
+
+Esse pipeline cria as combinações de grupo de 2 variáveis (z, y) e depois calcula as medias de x para essas combinações de grupo formadas.
+
+A mensagem informa que o resultado ainda está agrupado por `y` e que você pode modificar esse comportamento usando o argumento `.groups`:
+
+-   **`.groups = "drop_last"`**
+
+-   **`.groups = "drop"`**
+
+-   `.groups = "keep"`
+
+Normalemente, deve-se eliminar todos os agrupamentos formados com **`.groups = "drop"`.**
+
+**e)** Escreva como você acha que será a saída, e em seguida confira se acertou e descreva o que o seguinte pipeline faz. Como a saída difere da saída da parte (d):
+
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x), .groups = "drop")
+```
+
+Os resultados das médias pelos grupos são os mesmos, porém os agrupados foram removidos.
+
+**f)** Escreva como você acha que será a saída, e em seguida confira se acertou e descreva o que cada pipeline faz: Em que os dois pipelines diferem?
+
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x))
+
+df |>
+  group_by(y, z) |>
+  mutate(mean_x = mean(x))
+```
+
+-   pipeline 1: **Reduz os dados**: Cria um novo data frame com uma linha por grupo (uma combinação única de `y` e `z`). So mantém as colunas agrupadas (y, y) e anova coluna calculada (mean_x). É uma tabela resumida.
+
+-   pipeline 2: **Preserva os dados originais**: Calcula o mesmo valor de `mean_x` para cada grupo, mas mantém todas as linhas e colunas do data frame original. Adiciona a coluna meax_x e forma uma tabela expandida com essa nova coluna.
+
+### **Estudo de caso: agregados e tamanho de amostra**
+
+Sempre que você fizer alguma agregação, é sempre uma boa ideia incluir a contagem ([`n()`](https://dplyr.tidyverse.org/reference/context.html)). Dessa foma, você pode se certificar que não está tirando conclusões baseadas em pequenas quantidades de dados. 
+
+```{r}
+rebatedores <- dados::rebatedores |> 
+  group_by(id_jogador) |> 
+  summarize(
+    performance = sum(rebatidas_simples, na.rm = TRUE) / sum(vez_bastao, na.rm = TRUE),
+    n = sum(vez_bastao, na.rm = TRUE)
+  )
+rebatedores
+```
